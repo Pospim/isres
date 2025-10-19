@@ -1,0 +1,1 @@
+cmd = chicken_2000_upstream.fa fasta motif_hits -find homerMotifs.all.motifs
