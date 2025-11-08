@@ -1,0 +1,1 @@
+cmd = /home/pospim/Desktop/school/isres/human/isg_2k_upstream_gene_names.fa fasta motif_hits -find homerMotifs.all.motifs

@@ -1,0 +1,1 @@
+cmd = isg_2k_upstream.fa fasta out_nonISGbg -bg nonISG_up2kb.bg.fa -len 8,10,12 -p 8
