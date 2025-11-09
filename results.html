@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motif Analysis Results - Summary</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .summary-box {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .summary-box h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .summary-content {
+            line-height: 1.8;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .summary-content p {
+            margin-bottom: 15px;
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            font-size: 3em;
+            margin-right: 15px;
+        }
+
+        .card-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .card-species {
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .card-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .card-footer {
+            margin-top: 20px;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover .card-footer {
+            opacity: 0.9;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 50px;
+            opacity: 0.8;
+        }
+
+        /* Placeholder styling for editable content */
+        .editable-placeholder {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 30px;
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 Motif Analysis Results</h1>
+            <p>Interactive Visualization of ISG Motif Patterns</p>
+        </div>
+
+        <div class="summary-box">
+            <h2>📊 Project Summary</h2>
+            <div class="summary-content">
+                <div class="editable-placeholder">
+                    <p>For the de-novo analysis of chicken ISREs, 193 ISGs, previously found by Santhakumar et al. in 2019, were chosen. Upstream regions of 2000bp were used as promoters to possibly contain ISREs. That is a large enough window and can be lowered for further optimization.
+
+HOMER (Hypergeometric Optimization of Motif EnRichment) was chosen as a program to search the aforementioned upstream regions for new motifs. List of non-ISGs were used as a negative background against the genes ISGs analyzed for the HOMER run. The output motifs were then mapped to the fasta file using HOMER's mapMotifs.pl, which was then sorted by score. The HOMER score is the log-likelyhood ratio (LLR) x 1000</p>
+                    <p>----</p>
+                </div>
+
+                <!-- Example structure - uncomment and customize as needed:
+                <p><strong>Background:</strong> Your background text here...</p>
+                <p><strong>Objective:</strong> Your objective text here...</p>
+                <p><strong>Methods:</strong> Your methods description here...</p>
+                <p><strong>Key Findings:</strong> Your findings here...</p>
+                -->
+            </div>
+        </div>
+
+        <div class="cards-container">
+            <!-- Human - No Background -->
+            <a href="results/motif_mapper_human_no_bg.html" class="card">
+                <div class="card-header">
+                    <div class="card-icon">👤</div>
+                    <div>
+                        <div class="card-species">Human</div>
+                        <div class="card-title">No Background</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Analysis of human ISG motifs without background sequences.
+                    Identifies motifs enriched in interferon-stimulated genes.
+                </div>
+                <div class="card-stats">
+                    <div class="stat">
+                        <div class="stat-value">45.8K</div>
+                        <div class="stat-label">Occurrences</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">411</div>
+                        <div class="stat-label">Genes</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">75</div>
+                        <div class="stat-label">Motifs</div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    View Interactive Visualization →
+                </div>
+            </a>
+
+            <!-- Human - Non-ISG Background -->
+            <a href="results/motif_mapper_human_non_isg_bg.html" class="card">
+                <div class="card-header">
+                    <div class="card-icon">👥</div>
+                    <div>
+                        <div class="card-species">Human</div>
+                        <div class="card-title">Non-ISG Background</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Analysis of human ISG motifs using non-ISG sequences as background.
+                    Highlights motifs specifically enriched in ISGs compared to control genes.
+                </div>
+                <div class="card-stats">
+                    <div class="stat">
+                        <div class="stat-value">48.7K</div>
+                        <div class="stat-label">Occurrences</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">411</div>
+                        <div class="stat-label">Genes</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">72</div>
+                        <div class="stat-label">Motifs</div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    View Interactive Visualization →
+                </div>
+            </a>
+
+            <!-- Chicken -->
+            <a href="results/motif_mapper_chicken.html" class="card">
+                <div class="card-header">
+                    <div class="card-icon">🐔</div>
+                    <div>
+                        <div class="card-species">Chicken</div>
+                        <div class="card-title">ISG vs Non-ISG</div>
+                    </div>
+                </div>
+                <div class="card-description">
+                    Analysis of chicken ISG motifs compared to non-ISG background.
+                    Comparative genomics study of conserved regulatory elements.
+                </div>
+                <div class="card-stats">
+                    <div class="stat">
+                        <div class="stat-value">8.7K</div>
+                        <div class="stat-label">Occurrences</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">139</div>
+                        <div class="stat-label">Genes</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">268</div>
+                        <div class="stat-label">Motifs</div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    View Interactive Visualization →
+                </div>
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>Interactive motif visualization tool | Generated with map_motifs_to_html_v2.py</p>
+        </div>
+    </div>
+</body>
+</html>
