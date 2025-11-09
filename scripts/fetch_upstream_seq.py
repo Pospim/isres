@@ -5,9 +5,9 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 UPSTREAM_REGION = 2000
-SPECIES = "gallus_gallus"
+SPECIES = "homo_sapiens"
 
-def gene_id_to_ensmbl(gene_id, species=SPECIES) -> str:
+def gene_id_to_ensmbl(gene_id, species=SPECIES):
     """
     Convert gene ID to Ensembl ID using Ensembl REST API.
     """
@@ -133,9 +133,46 @@ def get_sequences_to_fasta(df, output_fasta_path, species=SPECIES, upstream=UPST
 
 
 
-df_path = "/home/pospim/Desktop/bca/papers/santhakumar_2019/isg_ensembl.csv"
-out_fasta = "/home/pospim/Desktop/bca/papers/santhakumar_2019/genes_2.fasta"
-df = pd.read_csv(df_path, sep='\t')
+df_path = "/home/pospim/Desktop/school/isres/human/human_isgs.csv"
+out_fasta = "/home/pospim/Desktop/school/isres/human/isg_2k_upstream.fa"
+
+# Load DataFrame (CSV expected with a column containing gene symbols)
+df = pd.read_csv(df_path, sep=',')
+
+# If the DataFrame doesn't already contain Ensembl IDs, try to find a gene-symbol
+# column and map symbols -> Ensembl IDs. Supported symbol column names:
+# 'ensmbl_id', 'gene_id', 'gene', 'gene_name', 'symbol', 'gene_symbol', 'Gene'
+if 'ensmbl_id' not in df.columns:
+    # detect possible gene symbol column
+    candidate_cols = ['gene_id', 'gene', 'genes', 'gene_name', 'symbol', 'gene_symbol', 'Gene']
+    found = None
+    for col in candidate_cols:
+        if col in df.columns:
+            found = col
+            break
+
+    if found is None:
+        raise ValueError(f"No gene symbol column found in {df_path}. Expected one of: {candidate_cols} or 'ensmbl_id'.")
+
+    # normalize to 'gene_id' for the mapping function
+    if found != 'gene_id':
+        df = df.rename(columns={found: 'gene_id'})
+
+    # Map gene symbols to Ensembl IDs
+    print(f"[INFO] Mapping gene symbols from column '{found}' to Ensembl IDs for species '{SPECIES}'...")
+    df_mapped = batch_gene_to_ensembl(df, species=SPECIES)
+
+    # Drop entries that couldn't be mapped
+    unmapped = df_mapped['ensmbl_id'].isnull().sum()
+    if unmapped > 0:
+        print(f"[WARN] {unmapped} gene(s) could not be mapped to Ensembl IDs and will be skipped.")
+
+    df = df_mapped.dropna(subset=['ensmbl_id']).reset_index(drop=True)
+
+else:
+    # already contains Ensembl IDs
+    print("[INFO] Input already contains 'ensmbl_id' column; skipping mapping step.")
 
 
-get_sequences_to_fasta(df, out_fasta )
+# Now fetch upstream sequences (uses Ensembl IDs in 'ensmbl_id')
+get_sequences_to_fasta(df, out_fasta)

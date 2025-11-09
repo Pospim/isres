@@ -1,1 +1,1 @@
-cmd = /home/pospim/Desktop/school/isres/human/isg_2k_upstream_gene_names.fa fasta motif_hits -find homerMotifs.all.motifs
+cmd = /mnt/c/Users/Pospim/Desktop/school/isres/human/isg_2k_upstream_gene_names.fa fasta /mnt/c/Users/Pospim/Desktop/school/isres/human/out_no_bg/motif_hits -find /mnt/c/Users/Pospim/Desktop/school/isres/human/out_no_bg/homerMotifs.all.motifs

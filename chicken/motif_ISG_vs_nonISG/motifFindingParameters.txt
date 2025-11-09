@@ -1,0 +1,1 @@
+cmd = ../raw/chicken_2000_upstream.fasta fasta motif_ISG_vs_nonISG -fastaBg ../genomes/galgal_bcg_seed42.fa -len 8,10,12 -S 200 -p 8
