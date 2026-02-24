@@ -18,5 +18,12 @@ Thumbs.db
 *.swp
 *.swo
 
-*.PDF
-papers
+# Ignore everything except scripts
+*
+!scripts/
+!scripts/**
+!.gitignore
+!README.md
+!*.py
+!*.sh
+!*.ipynb

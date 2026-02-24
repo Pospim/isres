@@ -30,15 +30,19 @@ def extract_gene_name(header, id_format ):
 
     if id_format == 'ensembl':
         # Format: ENSGALG00010001364 upstream 2000bp
+        # Also supports: SMCHD1|ENSGALG00010001364|chr2:...
         # Extract just the ENSEMBL ID
-        match = re.match(r'(ENS\w+)', header)
+        match = re.search(r'(ENS\w+)', header)
         if match:
             return match.group(1)
         return header.split()[0]
 
     elif id_format == 'gene_ensembl':
         # Format: ZNFX1 (ENSG00000124201) upstream 2000bp
-        # Extract the gene name before the parenthesis
+        # Also supports: SMCHD1|ENSGALG00010001364|chr2:...
+        # Extract the gene name before the parenthesis/pipe/whitespace
+        if '|' in header:
+            return header.split('|', 1)[0]
         match = re.match(r'([^\s(]+)', header)
         if match:
             return match.group(1)
@@ -46,8 +50,9 @@ def extract_gene_name(header, id_format ):
 
     elif id_format == 'gene':
         # Format: ZNFX1 or ZNFX1 upstream 2000bp
+        # Also supports: SMCHD1|ENSGALG00010001364|chr2:...
         # Extract just the gene name
-        return header.split()[0]
+        return header.split('|', 1)[0].split()[0]
 
     else:
         raise ValueError(f"Unknown id_format: {id_format}")
@@ -100,28 +105,38 @@ def read_motif_mappings(tsv_file, id_format='gene_ensembl'):
         reader = csv.DictReader(f, delimiter='\t')
         for row in reader:
             # Determine which column to use for FASTA key matching
-            if id_format == 'ensembl' and 'ensembl_id' in row and row['ensembl_id']:
-                # For ensembl format, use ensembl_id for matching FASTA keys
-                fasta_key = row['ensembl_id']
-            elif 'gene_name' in row and row['gene_name'] and id_format != 'ensembl':
-                # For other formats, use gene_name if available
-                fasta_key = row['gene_name']
-            elif 'FASTA ID' in row:
-                fasta_key = extract_gene_name(row['FASTA ID'], id_format)
-            elif 'gene' in row:
-                fasta_key = extract_gene_name(row['gene'], id_format)
+            if id_format == 'ensembl':
+                # Prefer ensembl_id; fall back to gene_name if composite values are in that field.
+                if 'ensembl_id' in row and row['ensembl_id']:
+                    fasta_key = row['ensembl_id']
+                elif 'gene_name' in row and row['gene_name']:
+                    fasta_key = extract_gene_name(row['gene_name'], 'ensembl')
+                elif 'FASTA ID' in row:
+                    fasta_key = extract_gene_name(row['FASTA ID'], 'ensembl')
+                elif 'gene' in row:
+                    fasta_key = extract_gene_name(row['gene'], 'ensembl')
+                else:
+                    raise ValueError("TSV file must have either 'gene_name', 'ensembl_id', 'FASTA ID', or 'gene' column")
             else:
-                raise ValueError("TSV file must have either 'gene_name', 'ensembl_id', 'FASTA ID', or 'gene' column")
+                # For other formats, use gene_name if available (may be composite).
+                if 'gene_name' in row and row['gene_name']:
+                    fasta_key = extract_gene_name(row['gene_name'], id_format)
+                elif 'FASTA ID' in row:
+                    fasta_key = extract_gene_name(row['FASTA ID'], id_format)
+                elif 'gene' in row:
+                    fasta_key = extract_gene_name(row['gene'], id_format)
+                else:
+                    raise ValueError("TSV file must have either 'gene_name', 'ensembl_id', 'FASTA ID', or 'gene' column")
 
             # Store the FASTA key for sequence lookup
             row['gene'] = fasta_key
-            
+
             # Store display name separately if available (prefer gene_name over ensembl_id)
             if 'gene_name' in row and row['gene_name']:
-                row['display_name'] = row['gene_name']
+                row['display_name'] = extract_gene_name(row['gene_name'], 'gene')
             else:
                 row['display_name'] = fasta_key
-            
+
             mappings.append(row)
 
     print(f"  Sample mapping genes (FASTA keys): {list(set([m['gene'] for m in mappings[:100]]))[:3]}")
@@ -143,7 +158,7 @@ def generate_heatmap(mappings, output_dir, top_n_motifs=20):
     """
     # Convert mappings to DataFrame
     df = pd.DataFrame(mappings)
-    
+
     # Use display_name for heatmap y-axis labels (human-readable names)
     df['gene_display'] = df['display_name']
 
@@ -184,6 +199,7 @@ def generate_heatmap(mappings, output_dir, top_n_motifs=20):
 
     # Save heatmap
     output_path = Path(output_dir)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     heatmap_file = output_path.parent / f'{output_path.stem}_heatmap_top{top_n_motifs}.html'
     fig.write_html(str(heatmap_file))
 
@@ -609,7 +625,7 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
     </script>
 </head>
 <body>
-    <h1>🧬 Motif Mapper - Interactive Visualization</h1>
+    <h1>Motif Mapper - Interactive Visualization</h1>
 
     <!-- Main View: Unique Motifs -->
     <div id="mainView" class="container">
@@ -618,7 +634,7 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
             <p>This page shows all unique motifs found in 2000bp of ISG genes.</p>
             <p><strong>Click on a motif</strong> in the list on the right to see all its occurrences across genes and their sequence locations.</p>
             <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196F3; border-radius: 4px;">
-                <strong>📊 Statistics:</strong><br>
+                <strong>Statistics:</strong><br>
                 Total Motif Hits: """ + str(len(mappings)) + """<br>
                 Genes Analyzed: """ + str(len(sequences)) + """<br>
                 Unique Motifs Found: """ + str(len(sorted_motifs)) + """
@@ -630,7 +646,7 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
         heatmap_filename = Path(heatmap_file).name
         html_content += f"""
             <a href="{heatmap_filename}" target="_blank" class="heatmap-button" style="margin-top: 20px;">
-                📊 View Gene-Motif Heatmap
+                View Gene-Motif Heatmap
             </a>
 """
 
@@ -673,7 +689,7 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
     <div id="detailView" class="container">
         <div class="motif-list-trigger"></div>
         <div class="motif-list">
-            <button class="back-button" onclick="backToMain()">← Back to All Motifs</button>
+            <button class="back-button" onclick="backToMain()">Back to All Motifs</button>
             <h2>Occurrences of: <span id="currentMotif"></span></h2>
             <input type="text" id="searchBoxDetail" class="search-box"
                    placeholder="Search occurrences..."
@@ -757,25 +773,36 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
 """
 
         # Build sequence with inline highlighted motifs
+        # Handle overlapping motifs so each base is emitted exactly once
         seq_with_highlights = []
         last_pos = 0
 
         for mapping in gene_mappings:
             start = int(mapping['start']) - 1  # Convert to 0-based
             end = int(mapping['end'])
-
-            # Add sequence before this motif
-            if start > last_pos:
-                seq_with_highlights.append(html.escape(sequence[last_pos:start]))
-
-            # Add the highlighted motif
-            motif_seq = sequence[start:end]
             target_id = f"{gene_id}_{mapping['start']}_{mapping['end']}"
-            seq_with_highlights.append(
-                f'<span id="{target_id}" style="background-color: #fff9c4; border: 2px solid #fbc02d; padding: 2px;">{html.escape(motif_seq)}</span>'
-            )
 
-            last_pos = end
+            if start >= last_pos:
+                # No overlap — add plain gap text, then full motif highlight
+                if start > last_pos:
+                    seq_with_highlights.append(html.escape(sequence[last_pos:start]))
+                motif_seq = sequence[start:end]
+                seq_with_highlights.append(
+                    f'<span id="{target_id}" style="background-color: #fff9c4; border: 2px solid #fbc02d; padding: 2px;">{html.escape(motif_seq)}</span>'
+                )
+                last_pos = end
+            elif end > last_pos:
+                # Partial overlap — only render the portion not yet emitted
+                motif_seq = sequence[last_pos:end]
+                seq_with_highlights.append(
+                    f'<span id="{target_id}" style="background-color: #fff9c4; border: 2px solid #fbc02d; padding: 2px;">{html.escape(motif_seq)}</span>'
+                )
+                last_pos = end
+            else:
+                # Completely contained in already-rendered region — add invisible anchor for scrolling
+                seq_with_highlights.append(
+                    f'<span id="{target_id}"></span>'
+                )
 
         # Add remaining sequence
         if last_pos < len(sequence):
@@ -796,10 +823,12 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
 """
 
     # Write HTML file
-    with open(output_file, 'w') as f:
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, 'w') as f:
         f.write(html_content)
 
-    print(f"HTML file generated: {output_file}")
+    print(f"HTML file generated: {output_path}")
 
 
 def main():
@@ -818,43 +847,43 @@ FASTA ID Format Options:
                  Example: >ZNFX1 upstream 2000bp
 
 Examples:
-  python map_motifs_to_html_v2.py motif_hits.tsv sequences.fa output.html
-  python map_motifs_to_html_v2.py motif_hits.tsv sequences.fa output.html --format ensembl
-  python map_motifs_to_html_v2.py motif_hits.tsv sequences.fa output.html --top_motifs 30
+  python map_motifs_to_html.py motif_hits.tsv sequences.fa output.html
+  python map_motifs_to_html.py motif_hits.tsv sequences.fa output.html --format ensembl
+  python map_motifs_to_html.py motif_hits.tsv sequences.fa output.html --top_motifs 5
         """
     )
 
-    parser.add_argument('tsv_file',
+    parser.add_argument('-t', '--tsv',
                         help='TSV file with motif hits')
-    parser.add_argument('fasta_file',
+    parser.add_argument('-f', '--fasta',
                         help='FASTA file with sequences')
-    parser.add_argument('output_file',
+    parser.add_argument('-o','--outfile',
                         help='Output HTML file path')
-    parser.add_argument('-f', '--format',
+    parser.add_argument( '--format',
                         choices=['ensembl', 'gene_ensembl', 'gene'],
                         default='gene_ensembl',
                         help='Format of FASTA headers (default: gene_ensembl)')
-    parser.add_argument('--top_motifs',
+    parser.add_argument('-n', '--top_motifs',
                         type=int,
-                        default=20,
-                        help='Number of top motifs to display in heatmap (default: 20)')
+                        default=5,
+                        help='Number of top motifs to display in heatmap (default: 5)')
 
     args = parser.parse_args()
 
     print(f"Reading FASTA file (format: {args.format})...")
-    sequences = read_fasta(args.fasta_file, args.format)
+    sequences = read_fasta(args.fasta, args.format)
     print(f"  Found {len(sequences)} sequences")
 
     print("Reading motif mappings...")
-    mappings = read_motif_mappings(args.tsv_file, args.format)
+    mappings = read_motif_mappings(args.tsv, args.format)
     print(f"  Found {len(mappings)} motif occurrences")
 
     # Generate heatmap
     print("\nGenerating heatmap...")
-    heatmap_file = generate_heatmap(mappings, args.output_file, args.top_motifs)
+    heatmap_file = generate_heatmap(mappings, args.outfile, args.top_motifs)
 
     print("\nGenerating HTML...")
-    generate_html(sequences, mappings, args.output_file, heatmap_file)
+    generate_html(sequences, mappings, args.outfile, heatmap_file)
 
     print("\n✓ Done! Open the HTML file in your browser to view the interactive map.")
     print(f"✓ Heatmap available at: {heatmap_file}")
