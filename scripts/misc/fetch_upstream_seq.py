@@ -4,7 +4,6 @@ import csv
 import re
 import gzip
 import tempfile
-import shutil
 import os
 from typing import Dict, Tuple, Optional
 
@@ -28,7 +27,7 @@ def parse_args():
     p = argparse.ArgumentParser(
         description="Extract 1kb upstream sequences for Ensembl gene IDs using genome FASTA + GTF."
     )
-    p.add_argument("--mapping", required=True, help="CSV/TSV with columns: gene_id, ensmbl_id")
+    p.add_argument("-m","--mapping", required=True, help="CSV/TSV with columns: gene_id, ensmbl_id")
     p.add_argument("--gtf", required=True, help="GTF file (galGal6 assembly)")
     p.add_argument("--genome", required=True, help="Genome FASTA (galGal6.fa)")
     p.add_argument("--out", required=True, help="Output FASTA")
@@ -99,7 +98,7 @@ def parse_gtf_coords(
             fields = line.rstrip("\n").split("\t")
             if len(fields) < 9:
                 continue
-            chrom, source, feat, start, end, score, strand, frame, attrs = fields
+            chrom, _, feat, start, end, _, strand, _, attrs = fields
             if feat != feature:
                 continue
 
