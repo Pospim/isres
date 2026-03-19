@@ -5,6 +5,7 @@ import re
 import gzip
 import tempfile
 import os
+import shutil
 from typing import Dict, Tuple, Optional
 
 def decompress_gzip(path: str) -> Tuple[str, bool]:
@@ -17,6 +18,7 @@ def decompress_gzip(path: str) -> Tuple[str, bool]:
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".fa")
     os.close(tmp_fd)
     with gzip.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
         return tmp_path, True
 
 def revcomp(seq: str) -> str:
@@ -25,9 +27,13 @@ def revcomp(seq: str) -> str:
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Extract 1kb upstream sequences for Ensembl gene IDs using genome FASTA + GTF."
+        description="Extract <upstream> b upstream sequences for Ensembl gene IDs using genome FASTA + GTF."
     )
     p.add_argument("-m","--mapping", required=True, help="CSV/TSV with columns: gene_id, ensmbl_id")
+    p.add_argument("--ens-col", default="ensmbl_id",
+                   help="Mapping column to use as Ensembl ID key (default: ensmbl_id)")
+    p.add_argument("--gene-col", default="gene_id",
+                   help="Mapping column to use as gene label in FASTA header (default: gene_id)")
     p.add_argument("--gtf", required=True, help="GTF file (galGal6 assembly)")
     p.add_argument("--genome", required=True, help="Genome FASTA (galGal6.fa)")
     p.add_argument("--out", required=True, help="Output FASTA")
@@ -38,7 +44,88 @@ def parse_args():
                    help="GTF feature to use for coordinates (default: gene; fallback: transcript)")
     p.add_argument("--padN", action="store_true",
                    help="Pad with Ns to guarantee exactly upstream length even at chromosome ends")
+    p.add_argument("--debug", action="store_true",
+                   help="Print debug info about mapping/GTF columns, IDs, and match counts")
     return p.parse_args()
+
+
+def normalize_ensembl_id(ens_id: str) -> str:
+    """
+    Normalize Ensembl-like IDs for matching by removing optional version suffix,
+    e.g. ENSGALG00000012345.1 -> ENSGALG00000012345.
+    """
+    return ens_id.split(".", 1)[0].strip()
+
+
+def extract_gtf_id(attrs: str) -> Optional[str]:
+    """Extract and normalize a gene-like ID from GTF attributes."""
+    re_ens_id_q = re.compile(r'ens(?:embl|mbl)_id "([^"]+)"')
+    re_ens_id_eq = re.compile(r'ens(?:embl|mbl)_id=([^;]+)')
+    re_gene_id_q = re.compile(r'gene_id "([^"]+)"')
+    re_gene_id_eq = re.compile(r'gene_id=([^;]+)')
+    re_gene_q = re.compile(r'gene "([^"]+)"')
+
+    gid = None
+    m = re_ens_id_q.search(attrs)
+    if m:
+        gid = m.group(1).strip()
+    else:
+        m = re_ens_id_eq.search(attrs)
+        if m:
+            gid = m.group(1).strip()
+    if gid is None:
+        m = re_gene_id_q.search(attrs)
+        if m:
+            gid = m.group(1).strip()
+        else:
+            m = re_gene_id_eq.search(attrs)
+            if m:
+                gid = m.group(1).strip()
+            else:
+                m = re_gene_q.search(attrs)
+                if m:
+                    gid = m.group(1).strip()
+
+    if gid:
+        return normalize_ensembl_id(gid)
+    return None
+
+
+def get_gtf_id_debug_info(
+    gtf_path: str,
+    needed_ens_ids: set,
+    feature: str,
+    sample_limit: int = 5,
+) -> Dict[str, object]:
+    scanned_rows = 0
+    unique_gtf_ids = set()
+    overlap_ids = set()
+    with open(gtf_path, "r") as f:
+        for line in f:
+            if not line or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 9:
+                continue
+            _, _, feat, _, _, _, _, _, attrs = fields
+            if feat != feature:
+                continue
+            scanned_rows += 1
+            gid = extract_gtf_id(attrs)
+            if not gid:
+                continue
+            unique_gtf_ids.add(gid)
+            if gid in needed_ens_ids:
+                overlap_ids.add(gid)
+
+    return {
+        "feature": feature,
+        "scanned_rows": scanned_rows,
+        "unique_gtf_ids": len(unique_gtf_ids),
+        "sample_gtf_ids": sorted(list(unique_gtf_ids))[:sample_limit],
+        "overlap_count": len(overlap_ids),
+        "sample_overlap_ids": sorted(list(overlap_ids))[:sample_limit],
+    }
 
 def detect_delim(path:str) -> str:
     with open(path, "r", newline="") as f:
@@ -47,29 +134,59 @@ def detect_delim(path:str) -> str:
         return "\t"
     return ","
 
-def load_mapping(path: str, delim: Optional[str]) -> Dict[str,str]:
+def load_mapping(
+    path: str,
+    delim: Optional[str],
+    ens_col_arg: str,
+    gene_col_arg: str,
+) -> Tuple[Dict[str, str], Dict[str, object]]:
     delim = delim or detect_delim(path)
     mapping = {}
+    rows_seen = 0
+    rows_with_ens_id = 0
+    rows_with_gene_and_ens = 0
+    headers = {}
+    gene_col = ""
+    ens_col = ""
     with open(path, "r", newline="") as f:
         reader = csv.DictReader(f, delimiter=delim)
         if not reader.fieldnames:
             raise ValueError("Mapping file appears to have no header row.")
 
         headers = {h.lower(): h for h in reader.fieldnames}
-        if "gene_id" not in headers or "ensmbl_id" not in headers:
+        ens_col_name = ens_col_arg.strip().lower()
+        gene_col_name = gene_col_arg.strip().lower()
+        if gene_col_name not in headers or ens_col_name not in headers:
             raise ValueError(
-                f"Mapping file must have headers 'gene_id' and 'ensmbl_id'. Found: {reader.fieldnames}"
+                "Mapping file is missing requested columns. "
+                f"Requested gene column='{gene_col_arg}', ensembl column='{ens_col_arg}'. "
+                f"Found: {reader.fieldnames}"
             )
 
-        gene_col = headers["gene_id"]
-        ens_col = headers["ensmbl_id"]
+        gene_col = headers[gene_col_name]
+        ens_col = headers[ens_col_name]
 
         for row in reader:
+            rows_seen += 1
             gene_id = (row.get(gene_col) or "").strip()
-            ens_id = (row.get(ens_col) or "").strip()
-            if gene_id and ens_id:
-                mapping[ens_id] = gene_id
-    return mapping
+            ens_id_raw = (row.get(ens_col) or "").strip()
+            ens_id = normalize_ensembl_id(ens_id_raw)
+            if ens_id:
+                rows_with_ens_id += 1
+                if gene_id:
+                    rows_with_gene_and_ens += 1
+                mapping[ens_id] = gene_id or ens_id
+    debug_info = {
+        "delimiter": delim,
+        "fieldnames": list(headers.values()),
+        "gene_col": gene_col,
+        "ens_col": ens_col,
+        "rows_seen": rows_seen,
+        "rows_with_ens_id": rows_with_ens_id,
+        "rows_with_gene_and_ens": rows_with_gene_and_ens,
+        "unique_ens_ids": len(mapping),
+    }
+    return mapping, debug_info
 
 
 def parse_gtf_coords(
@@ -80,16 +197,14 @@ def parse_gtf_coords(
     """
     Return dict: ens_gene_id -> (chrom, start_1based, end_1based, strand)
 
-    We try common attribute keys used in GTF:
+    We try common Ensembl-ish attribute keys used in GTF/GFF:
+      - ensembl_id "ENSGALG..." / ensmbl_id "ENSGALG..."
+      - ensembl_id=ENSGALG... / ensmbl_id=ENSGALG...
       - gene_id "ENSGALG..."
       - gene_id=ENSGALG...
       - gene "ENSGALG..." (rare)
     """
     out: Dict[str,Tuple[str,int,int,str]] = {}
-
-    re_gene_id_q = re.compile(r'gene_id "([^"]+)"')
-    re_gene_id_eq = re.compile(r'gene_id=([^;]+)')
-    re_gene_q = re.compile(r'gene "([^"]+)"')
 
     with open(gtf_path, "r") as f:
         for line in f:
@@ -102,18 +217,7 @@ def parse_gtf_coords(
             if feat != feature:
                 continue
 
-            gid = None
-            m = re_gene_id_q.search(attrs)
-            if m:
-                gid = m.group(1).strip()
-            else:
-                m = re_gene_id_eq.search(attrs)
-                if m:
-                    gid = m.group(1).strip()
-                else:
-                    m = re_gene_q.search(attrs)
-                    if m:
-                        gid = m.group(1).strip()
+            gid = extract_gtf_id(attrs)
 
             if not gid or gid not in needed_ens_ids:
                 continue
@@ -149,12 +253,41 @@ def main():
     except ImportError:
         raise SystemExit("Install dependency: pip install pyfaidx")
 
-    mapping = load_mapping(args.mapping, args.delim)
+    mapping, mapping_dbg = load_mapping(
+        args.mapping,
+        args.delim,
+        args.ens_col,
+        args.gene_col,
+    )
     needed = set(mapping.keys())
+
+    if args.debug:
+        print("[DEBUG] Mapping delimiter:", repr(mapping_dbg["delimiter"]))
+        print("[DEBUG] Mapping headers:", mapping_dbg["fieldnames"])
+        print("[DEBUG] Mapping gene column:", mapping_dbg["gene_col"])
+        print("[DEBUG] Mapping Ensembl column:", mapping_dbg["ens_col"])
+        print("[DEBUG] Mapping rows seen:", mapping_dbg["rows_seen"])
+        print("[DEBUG] Mapping rows with Ensembl ID:", mapping_dbg["rows_with_ens_id"])
+        print("[DEBUG] Mapping rows with both IDs:", mapping_dbg["rows_with_gene_and_ens"])
+        print("[DEBUG] Mapping unique normalized Ensembl IDs:", mapping_dbg["unique_ens_ids"])
+        print("[DEBUG] Mapping sample Ensembl IDs:", list(needed)[:5])
+
+        gtf_dbg = get_gtf_id_debug_info(args.gtf, needed, feature=args.feature)
+        print("[DEBUG] GTF debug feature:", gtf_dbg["feature"])
+        print("[DEBUG] GTF rows scanned for feature:", gtf_dbg["scanned_rows"])
+        print("[DEBUG] GTF unique extracted IDs:", gtf_dbg["unique_gtf_ids"])
+        print("[DEBUG] GTF sample extracted IDs:", gtf_dbg["sample_gtf_ids"])
+        print("[DEBUG] GTF overlap with mapping IDs:", gtf_dbg["overlap_count"])
+        print("[DEBUG] GTF sample overlap IDs:", gtf_dbg["sample_overlap_ids"])
 
     coords = parse_gtf_coords(args.gtf, needed, feature=args.feature)
     if len(coords) == 0 and args.feature == "gene":
         coords = parse_gtf_coords(args.gtf, needed, feature="transcript")
+
+    if args.debug:
+        print("[DEBUG] GTF matched IDs:", len(coords))
+        if coords:
+            print("[DEBUG] GTF sample matched IDs:", list(coords.keys())[:5])
 
     genome_path,  decompressed = decompress_gzip(args.genome)
     try:
