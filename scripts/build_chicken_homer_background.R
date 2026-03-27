@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+# Rscript scripts/build_chicken_homer_background.R   --organism-dir=human/raw/annotation   --output-prefix=human/raw/bcg/human_homer_background   --go-root-file=scripts/misc/go_to_exclude_from_bcg.txt   '--exclude-table=human/raw/ifn1_upreg_gene_list.tsv|ifn1_upregulated'
+
 suppressPackageStartupMessages({
   library(biomaRt)
   library(httr)
@@ -733,3 +735,5 @@ if (length(exclude_maps) > 0) {
 if (is.null(config$target_gene_file)) {
   message("Target exclusion was skipped because no --target-gene-file was provided")
 }
+
+# Rscript scripts/build_chicken_homer_background.R   --organism-dir=human/raw/annotation   --output-prefix=human/raw/bcg/human_homer_background   --go-root-file=scripts/misc/go_to_exclude_from_bcg.txt   '--exclude-table=human/raw/ifn1_upreg_gene_list.tsv|ifn1_upregulated'
