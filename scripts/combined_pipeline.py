@@ -91,8 +91,14 @@ Example usage:
     parser.add_argument(
         "--use-unique",
         action="store_true",
+        default=True,
+        help="Use deduplicated hits for visualization (default: True)",
+    )
+    parser.add_argument(
+        "--use-all",
+        action="store_true",
         default=False,
-        help="Use deduplicated hits for visualization (default: False)",
+        help="Use all hits for visualization instead of the deduplicated TSV",
     )
     parser.add_argument(
         "--skip-homer",
@@ -155,7 +161,10 @@ Example usage:
     coords_tsv_all = os.path.join(outdir, coords_file)
     coords_tsv_unique = os.path.join(outdir, coords_file.replace(".tsv", "_unique.tsv"))
 
-    if args.use_unique and os.path.isfile(coords_tsv_unique):
+    if args.use_all and os.path.isfile(coords_tsv_all):
+        coords_tsv = coords_tsv_all
+        print(f"[OK] Using all hits: {coords_tsv}")
+    elif args.use_unique and os.path.isfile(coords_tsv_unique):
         coords_tsv = coords_tsv_unique
         print(f"[OK] Using deduplicated hits: {coords_tsv}")
     elif os.path.isfile(coords_tsv_all):

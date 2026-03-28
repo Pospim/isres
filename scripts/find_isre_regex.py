@@ -307,6 +307,7 @@ def main() -> None:
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
+    input_prefix = Path(args.fasta).stem
     header = "seq_id\tstrand\tstart_1based\tend_1based\tmotif\tmatched_seq"
     hits_by_motif: Dict[str, List[Match]] = {motif.name: [] for motif in motifs}
     for hit in hits:
@@ -320,7 +321,7 @@ def main() -> None:
             for m in motif_hits
         ]
         lines.append(f"#unique_genes_found/total_genes\t{unique_genes_found}/{total_genes}")
-        output_path = output_dir / f"{safe_output_name(motif.name)}_hits.tsv"
+        output_path = output_dir / f"{input_prefix}_{safe_output_name(motif.name)}_hits.tsv"
         with open(output_path, "w") as handle:
             handle.write("\n".join(lines) + "\n")
 
@@ -347,7 +348,7 @@ def main() -> None:
         for m in unique_hits
     ]
     all_lines.append(f"#unique_genes_found/total_genes\t{unique_genes_found}/{total_genes}")
-    all_hits_path = output_dir / "all_unique_hits.tsv"
+    all_hits_path = output_dir / f"{input_prefix}_all_unique_hits.tsv"
     with open(all_hits_path, "w") as handle:
         handle.write("\n".join(all_lines) + "\n")
 

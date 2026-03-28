@@ -121,6 +121,8 @@ def read_motif_mappings(tsv_file, id_format='gene_ensembl'):
                 # For other formats, use gene_name if available (may be composite).
                 if 'gene_name' in row and row['gene_name']:
                     fasta_key = extract_gene_name(row['gene_name'], id_format)
+                elif 'ensembl_id' in row and row['ensembl_id']:
+                    fasta_key = extract_gene_name(row['ensembl_id'], id_format)
                 elif 'FASTA ID' in row:
                     fasta_key = extract_gene_name(row['FASTA ID'], id_format)
                 elif 'gene' in row:
@@ -397,11 +399,28 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
         }
 
         .highlight {
-            background-color: #ffeb3b;
-            font-weight: bold;
-            padding: 2px 4px;
-            border-radius: 3px;
             animation: pulse 1s ease-in-out;
+        }
+
+        .motif-hit {
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 1px 2px;
+            transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .motif-hit.selected-motif {
+            background-color: #ffeb3b;
+            border-color: #fbc02d;
+            font-weight: bold;
+        }
+
+        .motif-hit.nonselected-motif {
+            background-color: transparent;
+            border-color: transparent;
+            opacity: 1;
+            font-weight: normal;
         }
 
         @keyframes pulse {
@@ -520,6 +539,24 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
         }
     </style>
     <script>
+        function clearMotifSelection() {
+            document.querySelectorAll('.motif-hit').forEach(el => {
+                el.classList.remove('selected-motif', 'nonselected-motif', 'highlight');
+            });
+        }
+
+        function setActiveMotif(motif) {
+            clearMotifSelection();
+
+            document.querySelectorAll('.motif-hit').forEach(el => {
+                if (el.dataset.motif === motif) {
+                    el.classList.add('selected-motif');
+                } else {
+                    el.classList.add('nonselected-motif');
+                }
+            });
+        }
+
         function showMotifDetails(motif) {
             console.log('Showing details for motif:', motif);
 
@@ -527,6 +564,7 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
             document.getElementById('mainView').style.display = 'none';
             document.getElementById('detailView').style.display = 'block';
             document.getElementById('currentMotif').textContent = motif;
+            setActiveMotif(motif);
 
             // Show only occurrences of this motif
             const allOccurrences = document.querySelectorAll('.occurrence-item');
@@ -571,6 +609,8 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
             allSections.forEach(section => {
                 section.style.display = 'none';
             });
+
+            clearMotifSelection();
 
             // Show main view
             mainView.style.display = 'block';
@@ -781,6 +821,8 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
             start = int(mapping['start']) - 1  # Convert to 0-based
             end = int(mapping['end'])
             target_id = f"{gene_id}_{mapping['start']}_{mapping['end']}"
+            motif_base = mapping['motif'].split('-', 1)[1] if '-' in mapping['motif'] else mapping['motif']
+            motif_attr = html.escape(motif_base, quote=True)
 
             if start >= last_pos:
                 # No overlap — add plain gap text, then full motif highlight
@@ -788,20 +830,20 @@ def generate_html(sequences, mappings, output_file, heatmap_file=None):
                     seq_with_highlights.append(html.escape(sequence[last_pos:start]))
                 motif_seq = sequence[start:end]
                 seq_with_highlights.append(
-                    f'<span id="{target_id}" style="background-color: #fff9c4; border: 2px solid #fbc02d; padding: 2px;">{html.escape(motif_seq)}</span>'
+                    f'<span id="{target_id}" class="motif-hit" data-motif="{motif_attr}">{html.escape(motif_seq)}</span>'
                 )
                 last_pos = end
             elif end > last_pos:
                 # Partial overlap — only render the portion not yet emitted
                 motif_seq = sequence[last_pos:end]
                 seq_with_highlights.append(
-                    f'<span id="{target_id}" style="background-color: #fff9c4; border: 2px solid #fbc02d; padding: 2px;">{html.escape(motif_seq)}</span>'
+                    f'<span id="{target_id}" class="motif-hit" data-motif="{motif_attr}">{html.escape(motif_seq)}</span>'
                 )
                 last_pos = end
             else:
                 # Completely contained in already-rendered region — add invisible anchor for scrolling
                 seq_with_highlights.append(
-                    f'<span id="{target_id}"></span>'
+                    f'<span id="{target_id}" class="motif-hit" data-motif="{motif_attr}"></span>'
                 )
 
         # Add remaining sequence

@@ -39,6 +39,7 @@ default_config <- function() {
     go_obo_file = "/home/pospim/Desktop/isres/scripts/misc/go-basic.obo",
     biomart_dataset = "ggallus_gene_ensembl",
     output_prefix = "chicken_homer_background",
+    output_prefix_explicit = FALSE,
     target_gene_file = NULL,
     go_root_file = NULL,
     discovered_fasta_files = character(),
@@ -123,6 +124,7 @@ parse_args <- function(args) {
       cfg$organism_dir <- value
     } else if (key == "output-prefix") {
       cfg$output_prefix <- value
+      cfg$output_prefix_explicit <- TRUE
     } else if (key == "biomart-dataset") {
       cfg$biomart_dataset <- value
     } else if (key == "gene2go") {
@@ -208,6 +210,25 @@ resolve_config <- function(cfg) {
       cfg$go_root_file <- discovered$go_root_file
     }
     cfg$discovered_fasta_files <- discovered$fasta_files
+
+    if (!isTRUE(cfg$output_prefix_explicit)) {
+      organism_dir_norm <- normalizePath(cfg$organism_dir, winslash = "/", mustWork = TRUE)
+      parent_dir <- dirname(organism_dir_norm)
+      base_name <- basename(organism_dir_norm)
+
+      if (base_name == "annotation") {
+        output_dir <- file.path(parent_dir, "bcg")
+      } else {
+        output_dir <- file.path(organism_dir_norm, "bcg")
+      }
+
+      if (!dir.exists(output_dir)) {
+        dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+      }
+
+      organism_name <- basename(parent_dir)
+      cfg$output_prefix <- file.path(output_dir, paste0(organism_name, "_homer_background"))
+    }
   }
 
   cfg
@@ -248,7 +269,10 @@ slugify <- function(x) {
 
 read_gene_table <- function(path) {
   ext <- tools::file_ext(path)
-  if (tolower(ext) %in% c("tsv", "txt")) {
+  if (tolower(ext) == "txt") {
+    vals <- readr::read_lines(path, progress = FALSE)
+    tibble(gene_id = vals)
+  } else if (tolower(ext) == "tsv") {
     suppressWarnings(readr::read_tsv(path, show_col_types = FALSE, progress = FALSE))
   } else {
     suppressWarnings(readr::read_csv(path, show_col_types = FALSE, progress = FALSE))
