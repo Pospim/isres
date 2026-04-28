@@ -20,11 +20,17 @@ Thumbs.db
 
 # Ignore everything except scripts
 *
+!*/
+!**/*.html
+!**/*.sh
+**/motif[0-9]*.html
 !scripts/
 !scripts/**
+scripts/**/__pycache__/
+scripts/**/*.py[cod]
 !.gitignore
 !README.md
 !*.py
-!*.sh
 !*.ipynb
+!*.R
 *.obo

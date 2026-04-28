@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combined Pipeline Results</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #172026;
+      --muted: #64707d;
+      --border: #d9dee5;
+      --accent: #0f766e;
+      --accent-strong: #0b5f59;
+      --accent-soft: #e3f4f1;
+      --warm: #b45309;
+      --warm-soft: #fff3df;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(260px, 360px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside,
+    .runs,
+    main {
+      padding: 24px;
+    }
+
+    aside {
+      border-right: 1px solid var(--border);
+      background: #fbfcfd;
+    }
+
+    .runs {
+      border-right: 1px solid var(--border);
+      background: #ffffff;
+    }
+
+    main {
+      overflow: auto;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      font-size: 22px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 20px;
+      line-height: 1.25;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .summary {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      margin-bottom: 22px;
+    }
+
+    .button-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    button {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    button.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .button-title {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .button-meta {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #edf2f7;
+      color: #334155;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .stats {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .stat-row,
+    .report-link {
+      display: grid;
+      gap: 6px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-row strong {
+      font-size: 18px;
+    }
+
+    .stat-row a,
+    .report-link a {
+      color: var(--accent-strong);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .stat-row a:hover,
+    .report-link a:hover {
+      text-decoration: underline;
+    }
+
+    .stat-source,
+    .report-source {
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .source-line {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .run-heading {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .run-heading h2 {
+      margin: 0;
+    }
+
+    .metric {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--warm-soft);
+      color: var(--warm);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 920px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      aside,
+      .runs {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h1>Combined Pipeline Results</h1>
+      <p class="summary"><span id="speciesCount">0</span> species, <span id="reportCount">89</span> top-level HTML reports copied into source-named result folders.</p>
+      <h3>Species</h3>
+      <div id="speciesList" class="button-list"></div>
+    </aside>
+    <section class="runs">
+      <h3>Runs</h3>
+      <div id="runList" class="button-list"></div>
+    </section>
+    <main>
+      <section id="detail"></section>
+    </main>
+  </div>
+
+  <script id="dashboard-data" type="application/json">{
+  "species": [
+    {
+      "id": "chicken",
+      "name": "Chicken",
+      "runs": [
+        {
+          "id": "chicken_hs_ifn1_ort_2kb",
+          "species": "chicken",
+          "source_dir": "chicken/homer_hs_ifn1_ort_2kb",
+          "dest_dir": "chicken_hs_ifn1_ort_2kb",
+          "name": "human IFN1 orthologs 2 kb",
+          "raw_name": "chicken/homer_hs_ifn1_ort_2kb",
+          "tags": [
+            "orthologs",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_hs_ifn1_ort_2kb/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_hs_ifn1_ort_2kb/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_hs_ifn1_ort_2kb/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_hs_ifn1_ort_2kb/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_hs_ifn1_ort_2kb/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_hs_ifn1_ort_2kb_cpg",
+          "species": "chicken",
+          "source_dir": "chicken/homer_hs_ifn1_ort_2kb_cpg",
+          "dest_dir": "chicken_hs_ifn1_ort_2kb_cpg",
+          "name": "human IFN1 orthologs 2 kb CpG",
+          "raw_name": "chicken/homer_hs_ifn1_ort_2kb_cpg",
+          "tags": [
+            "CpG",
+            "orthologs",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_hs_ifn1_ort_2kb_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_hs_ifn1_ort_2kb_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_hs_ifn1_ort_2kb_cpg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_hs_ifn1_ort_2kb_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_hs_ifn1_ort_2kb_cpg/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_hs_orth_builtinbg",
+          "species": "chicken",
+          "source_dir": "chicken/homer_hs_orth_builtinbg",
+          "dest_dir": "chicken_hs_orth_builtinbg",
+          "name": "human orthologs built-in bg",
+          "raw_name": "chicken/homer_hs_orth_builtinbg",
+          "tags": [
+            "orthologs",
+            "built-in bg"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_hs_orth_builtinbg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_hs_orth_builtinbg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_hs_orth_builtinbg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_hs_orth_builtinbg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_hs_orth_builtinbg/knownResults.html"
+            },
+            {
+              "filename": "geneOntology.html",
+              "label": "Gene ontology",
+              "href": "chicken_hs_orth_builtinbg/geneOntology.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_hs_orth_builtinbg_cpg",
+          "species": "chicken",
+          "source_dir": "chicken/homer_hs_orth_builtinbg_cpg",
+          "dest_dir": "chicken_hs_orth_builtinbg_cpg",
+          "name": "human orthologs built-in bg CpG",
+          "raw_name": "chicken/homer_hs_orth_builtinbg_cpg",
+          "tags": [
+            "CpG",
+            "orthologs",
+            "built-in bg"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_hs_orth_builtinbg_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_hs_orth_builtinbg_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_hs_orth_builtinbg_cpg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_hs_orth_builtinbg_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_hs_orth_builtinbg_cpg/knownResults.html"
+            },
+            {
+              "filename": "geneOntology.html",
+              "label": "Gene ontology",
+              "href": "chicken_hs_orth_builtinbg_cpg/geneOntology.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_ifn1_2kb_up",
+          "species": "chicken",
+          "source_dir": "chicken/homer_ifn1_2kb_up",
+          "dest_dir": "chicken_ifn1_2kb_up",
+          "name": "IFN1 2 kb up",
+          "raw_name": "chicken/homer_ifn1_2kb_up",
+          "tags": [
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_ifn1_2kb_up/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_ifn1_2kb_up/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_ifn1_2kb_up/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_ifn1_2kb_up/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_ifn1_2kb_up/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_ifn1_2kb_up_cpg",
+          "species": "chicken",
+          "source_dir": "chicken/homer_ifn1_2kb_up_cpg",
+          "dest_dir": "chicken_ifn1_2kb_up_cpg",
+          "name": "IFN1 2 kb up CpG",
+          "raw_name": "chicken/homer_ifn1_2kb_up_cpg",
+          "tags": [
+            "CpG",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_ifn1_2kb_up_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_ifn1_2kb_up_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_ifn1_2kb_up_cpg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_ifn1_2kb_up_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_ifn1_2kb_up_cpg/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_ifn1_builtinbg",
+          "species": "chicken",
+          "source_dir": "chicken/homer_ifn1_builtinbg",
+          "dest_dir": "chicken_ifn1_builtinbg",
+          "name": "IFN1 built-in bg",
+          "raw_name": "chicken/homer_ifn1_builtinbg",
+          "tags": [
+            "built-in bg",
+            "IFN1"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_ifn1_builtinbg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_ifn1_builtinbg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_ifn1_builtinbg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_ifn1_builtinbg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_ifn1_builtinbg/knownResults.html"
+            },
+            {
+              "filename": "geneOntology.html",
+              "label": "Gene ontology",
+              "href": "chicken_ifn1_builtinbg/geneOntology.html"
+            }
+          ]
+        },
+        {
+          "id": "chicken_ifn1_builtinbg_cpg",
+          "species": "chicken",
+          "source_dir": "chicken/homer_ifn1_builtinbg_cpg",
+          "dest_dir": "chicken_ifn1_builtinbg_cpg",
+          "name": "IFN1 built-in bg CpG",
+          "raw_name": "chicken/homer_ifn1_builtinbg_cpg",
+          "tags": [
+            "CpG",
+            "built-in bg",
+            "IFN1"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "chicken_ifn1_builtinbg_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "chicken_ifn1_builtinbg_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "chicken_ifn1_builtinbg_cpg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "chicken_ifn1_builtinbg_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "chicken_ifn1_builtinbg_cpg/knownResults.html"
+            },
+            {
+              "filename": "geneOntology.html",
+              "label": "Gene ontology",
+              "href": "chicken_ifn1_builtinbg_cpg/geneOntology.html"
+            }
+          ]
+        }
+      ],
+      "regex": [
+        {
+          "source": "human IFN1 ISG chicken orthologs 2 kb up",
+          "file": "chicken/isre_regex/hs_ifn1_isg_gal_orth_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "href": "regex_hits/chicken_isre_regex_hs_ifn1_isg_gal_orth_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "unique": 73,
+          "total": 332,
+          "ratio": "73/332",
+          "percent": 22.0
+        },
+        {
+          "source": "IFN1 upregulated 2 kb up",
+          "file": "chicken/isre_regex/ifn1_upreg_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "href": "regex_hits/chicken_isre_regex_ifn1_upreg_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "unique": 34,
+          "total": 139,
+          "ratio": "34/139",
+          "percent": 24.5
+        }
+      ]
+    },
+    {
+      "id": "duck",
+      "name": "Duck",
+      "runs": [
+        {
+          "id": "duck_hs_ifn1_orth_2k_custombg",
+          "species": "duck",
+          "source_dir": "duck/homer_hs_ifn1_orth_2k_custombg",
+          "dest_dir": "duck_hs_ifn1_orth_2k_custombg",
+          "name": "human IFN1 orthologs 2 kb custom bg",
+          "raw_name": "duck/homer_hs_ifn1_orth_2k_custombg",
+          "tags": [
+            "orthologs",
+            "custom bg",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "duck_hs_ifn1_orth_2k_custombg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "duck_hs_ifn1_orth_2k_custombg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "duck_hs_ifn1_orth_2k_custombg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "duck_hs_ifn1_orth_2k_custombg/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "duck_hs_ifn1_orth_2k_custombg_cpg",
+          "species": "duck",
+          "source_dir": "duck/homer_hs_ifn1_orth_2k_custombg_cpg",
+          "dest_dir": "duck_hs_ifn1_orth_2k_custombg_cpg",
+          "name": "human IFN1 orthologs 2 kb custom bg CpG",
+          "raw_name": "duck/homer_hs_ifn1_orth_2k_custombg_cpg",
+          "tags": [
+            "CpG",
+            "orthologs",
+            "custom bg",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "duck_hs_ifn1_orth_2k_custombg_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "duck_hs_ifn1_orth_2k_custombg_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "duck_hs_ifn1_orth_2k_custombg_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "duck_hs_ifn1_orth_2k_custombg_cpg/knownResults.html"
+            }
+          ]
+        }
+      ],
+      "regex": [
+        {
+          "source": "human IFN1 upregulated duck orthologs 2 kb up",
+          "file": "duck/regex_hits/hs_ifn1_upreg_duck_orth_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "href": "regex_hits/duck_regex_hits_hs_ifn1_upreg_duck_orth_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "unique": 49,
+          "total": 224,
+          "ratio": "49/224",
+          "percent": 21.9
+        }
+      ]
+    },
+    {
+      "id": "human",
+      "name": "Human",
+      "runs": [
+        {
+          "id": "human_2kb_custombg",
+          "species": "human",
+          "source_dir": "human/homer_2kb_custombg",
+          "dest_dir": "human_2kb_custombg",
+          "name": "2 kb custom bg",
+          "raw_name": "human/homer_2kb_custombg",
+          "tags": [
+            "custom bg",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "human_2kb_custombg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "human_2kb_custombg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "human_2kb_custombg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "human_2kb_custombg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "human_2kb_custombg/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "human_2kb_custombg_cpg",
+          "species": "human",
+          "source_dir": "human/homer_2kb_custombg_cpg",
+          "dest_dir": "human_2kb_custombg_cpg",
+          "name": "2 kb custom bg CpG",
+          "raw_name": "human/homer_2kb_custombg_cpg",
+          "tags": [
+            "CpG",
+            "custom bg",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "human_2kb_custombg_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "human_2kb_custombg_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "human_2kb_custombg_cpg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "human_2kb_custombg_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "human_2kb_custombg_cpg/knownResults.html"
+            }
+          ]
+        },
+        {
+          "id": "human_ifn1_2k_builtinbg",
+          "species": "human",
+          "source_dir": "human/homer_ifn1_2k_builtinbg",
+          "dest_dir": "human_ifn1_2k_builtinbg",
+          "name": "IFN1 2 kb built-in bg",
+          "raw_name": "human/homer_ifn1_2k_builtinbg",
+          "tags": [
+            "built-in bg",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "human_ifn1_2k_builtinbg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "human_ifn1_2k_builtinbg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "human_ifn1_2k_builtinbg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "human_ifn1_2k_builtinbg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "human_ifn1_2k_builtinbg/knownResults.html"
+            },
+            {
+              "filename": "geneOntology.html",
+              "label": "Gene ontology",
+              "href": "human_ifn1_2k_builtinbg/geneOntology.html"
+            }
+          ]
+        },
+        {
+          "id": "human_ifn1_2k_builtinbg_cpg",
+          "species": "human",
+          "source_dir": "human/homer_ifn1_2k_builtinbg_cpg",
+          "dest_dir": "human_ifn1_2k_builtinbg_cpg",
+          "name": "IFN1 2 kb built-in bg CpG",
+          "raw_name": "human/homer_ifn1_2k_builtinbg_cpg",
+          "tags": [
+            "CpG",
+            "built-in bg",
+            "IFN1",
+            "2 kb"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map.html",
+              "label": "Motif map",
+              "href": "human_ifn1_2k_builtinbg_cpg/motif_map.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top5.html",
+              "label": "Heatmap top 5",
+              "href": "human_ifn1_2k_builtinbg_cpg/motif_map_heatmap_top5.html"
+            },
+            {
+              "filename": "motif_map_heatmap_top10.html",
+              "label": "Heatmap top 10",
+              "href": "human_ifn1_2k_builtinbg_cpg/motif_map_heatmap_top10.html"
+            },
+            {
+              "filename": "homerResults.html",
+              "label": "HOMER de novo motifs",
+              "href": "human_ifn1_2k_builtinbg_cpg/homerResults.html"
+            },
+            {
+              "filename": "knownResults.html",
+              "label": "Known motif enrichment",
+              "href": "human_ifn1_2k_builtinbg_cpg/knownResults.html"
+            },
+            {
+              "filename": "geneOntology.html",
+              "label": "Gene ontology",
+              "href": "human_ifn1_2k_builtinbg_cpg/geneOntology.html"
+            }
+          ]
+        },
+        {
+          "id": "human_ifn1_upreg_out_cpg_hits",
+          "species": "human",
+          "source_dir": "human/ifn1_upreg_out_cpg/hits",
+          "dest_dir": "human_ifn1_upreg_out_cpg_hits",
+          "name": "IFN1 upregulated out CpG hits",
+          "raw_name": "human/ifn1_upreg_out_cpg/hits",
+          "tags": [
+            "CpG",
+            "IFN1",
+            "all hits"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map_uniq.html",
+              "label": "Motif map unique",
+              "href": "human_ifn1_upreg_out_cpg_hits/motif_map_uniq.html"
+            },
+            {
+              "filename": "motif_map_heatmap_uniq_top5.html",
+              "label": "Unique heatmap top 5",
+              "href": "human_ifn1_upreg_out_cpg_hits/motif_map_heatmap_uniq_top5.html"
+            },
+            {
+              "filename": "motif_map_all.html",
+              "label": "Motif map all hits",
+              "href": "human_ifn1_upreg_out_cpg_hits/motif_map_all.html"
+            },
+            {
+              "filename": "motif_map_heatmap_all_top5.html",
+              "label": "All hits heatmap top 5",
+              "href": "human_ifn1_upreg_out_cpg_hits/motif_map_heatmap_all_top5.html"
+            },
+            {
+              "filename": "isre_compare/homerResults.html",
+              "label": "isre compare: HOMER de novo motifs",
+              "href": "human_ifn1_upreg_out_cpg_hits/isre_compare/homerResults.html"
+            },
+            {
+              "filename": "isre_compare_jaspar/homerResults.html",
+              "label": "isre compare JASPAR: HOMER de novo motifs",
+              "href": "human_ifn1_upreg_out_cpg_hits/isre_compare_jaspar/homerResults.html"
+            },
+            {
+              "filename": "isre_compare_n/homerResults.html",
+              "label": "isre compare n: HOMER de novo motifs",
+              "href": "human_ifn1_upreg_out_cpg_hits/isre_compare_n/homerResults.html"
+            }
+          ]
+        },
+        {
+          "id": "human_ifn1_upreg_out_hits",
+          "species": "human",
+          "source_dir": "human/ifn1_upreg_out/hits",
+          "dest_dir": "human_ifn1_upreg_out_hits",
+          "name": "IFN1 upregulated out hits",
+          "raw_name": "human/ifn1_upreg_out/hits",
+          "tags": [
+            "IFN1",
+            "all hits"
+          ],
+          "reports": [
+            {
+              "filename": "motif_map_uniq.html",
+              "label": "Motif map unique",
+              "href": "human_ifn1_upreg_out_hits/motif_map_uniq.html"
+            },
+            {
+              "filename": "motif_map_heatmap_uniq_top5.html",
+              "label": "Unique heatmap top 5",
+              "href": "human_ifn1_upreg_out_hits/motif_map_heatmap_uniq_top5.html"
+            },
+            {
+              "filename": "motif_map_all.html",
+              "label": "Motif map all hits",
+              "href": "human_ifn1_upreg_out_hits/motif_map_all.html"
+            },
+            {
+              "filename": "motif_map_heatmap_all_top5.html",
+              "label": "All hits heatmap top 5",
+              "href": "human_ifn1_upreg_out_hits/motif_map_heatmap_all_top5.html"
+            },
+            {
+              "filename": "isre_compare/homerResults.html",
+              "label": "isre compare: HOMER de novo motifs",
+              "href": "human_ifn1_upreg_out_hits/isre_compare/homerResults.html"
+            },
+            {
+              "filename": "isre_compare_jaspar/homerResults.html",
+              "label": "isre compare JASPAR: HOMER de novo motifs",
+              "href": "human_ifn1_upreg_out_hits/isre_compare_jaspar/homerResults.html"
+            },
+            {
+              "filename": "isre_compare_paper/homerResults.html",
+              "label": "isre compare paper: HOMER de novo motifs",
+              "href": "human_ifn1_upreg_out_hits/isre_compare_paper/homerResults.html"
+            },
+            {
+              "filename": "isre_compare_n/isre_compare_hs.html",
+              "label": "isre compare n: isre compare human",
+              "href": "human_ifn1_upreg_out_hits/isre_compare_n/isre_compare_hs.html"
+            }
+          ]
+        }
+      ],
+      "regex": [
+        {
+          "source": "IFN1 2 kb up",
+          "file": "human/regex_hits/ifn1_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "href": "regex_hits/human_regex_hits_ifn1_2kb_up_Santhakumar_2018_isre_hits.tsv",
+          "unique": 103,
+          "total": 349,
+          "ratio": "103/349",
+          "percent": 29.5
+        }
+      ]
+    },
+    {
+      "id": "mouse",
+      "name": "Mouse",
+      "runs": [],
+      "regex": [
+        {
+          "source": "mouse",
+          "file": "mouse/isre_hits_2kb/mus_Santhakumar_2018_isre_hits.tsv",
+          "href": "regex_hits/mouse_isre_hits_2kb_mus_Santhakumar_2018_isre_hits.tsv",
+          "unique": 74,
+          "total": 228,
+          "ratio": "74/228",
+          "percent": 32.5
+        }
+      ]
+    }
+  ],
+  "total_reports": 89
+}</script>
+  <script>
+    const DATA = JSON.parse(document.getElementById("dashboard-data").textContent);
+    let activeSpeciesId = DATA.species[0] ? DATA.species[0].id : null;
+    let activeRunId = null;
+
+    const speciesList = document.getElementById("speciesList");
+    const runList = document.getElementById("runList");
+    const detail = document.getElementById("detail");
+    document.getElementById("speciesCount").textContent = DATA.species.length;
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function currentSpecies() {
+      return DATA.species.find((species) => species.id === activeSpeciesId) || DATA.species[0];
+    }
+
+    function currentRun(species) {
+      if (!species || !species.runs.length) {
+        return null;
+      }
+      const existing = species.runs.find((run) => run.id === activeRunId);
+      return existing || species.runs[0];
+    }
+
+    function regexSummary(species) {
+      if (!species.regex.length) {
+        return "No regex summary";
+      }
+      if (species.regex.length === 1) {
+        const stat = species.regex[0];
+        return `${stat.unique}/${stat.total} unique genes`;
+      }
+      return `${species.regex.length} regex summaries`;
+    }
+
+    function renderSpeciesList() {
+      speciesList.innerHTML = "";
+      DATA.species.forEach((species) => {
+        const button = document.createElement("button");
+        button.className = species.id === activeSpeciesId ? "active" : "";
+        button.type = "button";
+        button.innerHTML = `
+          <span class="button-title">${escapeHtml(species.name)}</span>
+          <span class="button-meta">${species.runs.length} runs, ${regexSummary(species)}</span>
+        `;
+        button.addEventListener("click", () => {
+          activeSpeciesId = species.id;
+          activeRunId = species.runs[0] ? species.runs[0].id : null;
+          render();
+        });
+        speciesList.appendChild(button);
+      });
+    }
+
+    function renderRunList(species) {
+      runList.innerHTML = "";
+      if (!species || !species.runs.length) {
+        runList.innerHTML = '<div class="empty">No copied HTML runs found for this species.</div>';
+        return;
+      }
+
+      species.runs.forEach((run) => {
+        const button = document.createElement("button");
+        button.className = run.id === activeRunId ? "active" : "";
+        button.type = "button";
+        const tags = run.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
+        button.innerHTML = `
+          <span class="button-title">${escapeHtml(run.name)}</span>
+          <span class="button-meta">${run.reports.length} reports</span>
+          <span class="tags">${tags}</span>
+        `;
+        button.addEventListener("click", () => {
+          activeRunId = run.id;
+          render();
+        });
+        runList.appendChild(button);
+      });
+    }
+
+    function renderRegexStats(species) {
+      if (!species.regex.length) {
+        return '<div class="empty">No Santhakumar_2018 regex summary TSV was found for this species.</div>';
+      }
+      return `
+        <div class="stats">
+          ${species.regex.map((stat) => `
+            <div class="stat-row">
+              <strong>${stat.unique} of ${stat.total} unique genes with hits</strong>
+              <span>${stat.percent === null ? "n/a" : stat.percent.toFixed(1) + "%"} of genes in source set</span>
+              <a href="${escapeHtml(stat.href)}">${escapeHtml(stat.source)}</a>
+              <span class="stat-source">${escapeHtml(stat.file)}</span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderReports(run) {
+      if (!run) {
+        return '<div class="empty">Select a species with copied HTML runs to show report links.</div>';
+      }
+      return `
+        <div class="run-heading">
+          <h2>${escapeHtml(run.name)}</h2>
+          <span class="metric">${run.reports.length} HTML reports</span>
+        </div>
+        <p class="source-line">Copied from ${escapeHtml(run.source_dir)} to results/${escapeHtml(run.dest_dir)}/</p>
+        <div class="report-grid">
+          ${run.reports.map((report) => `
+            <div class="report-link">
+              <a href="${escapeHtml(report.href)}">${escapeHtml(report.label)}</a>
+              <span class="report-source">${escapeHtml(report.filename)}</span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderDetail(species, run) {
+      if (!species) {
+        detail.innerHTML = '<div class="empty">No results were found.</div>';
+        return;
+      }
+      detail.innerHTML = `
+        <h2>${escapeHtml(species.name)}</h2>
+        <h3>Santhakumar 2018 ISRE regex hits</h3>
+        ${renderRegexStats(species)}
+        <h3>Selected run</h3>
+        ${renderReports(run)}
+      `;
+    }
+
+    function render() {
+      const species = currentSpecies();
+      if (species && (!activeRunId || !species.runs.some((run) => run.id === activeRunId))) {
+        activeRunId = species.runs[0] ? species.runs[0].id : null;
+      }
+      const run = currentRun(species);
+      renderSpeciesList();
+      renderRunList(species);
+      renderDetail(species, run);
+    }
+
+    render();
+  </script>
+</body>
+</html>
