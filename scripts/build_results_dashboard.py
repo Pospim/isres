@@ -17,15 +17,15 @@ SAN_REGEX_SUFFIX = "_Santhakumar_2018_isre_hits.tsv"
 RUN_MARKERS = ("motif_map.html", "motif_map_uniq.html", "motif_map_all.html")
 
 REPORT_ORDER = {
-    "motif_map.html": 0,
-    "motif_map_uniq.html": 1,
-    "motif_map_heatmap_uniq_top5.html": 2,
-    "motif_map_all.html": 3,
-    "motif_map_heatmap_all_top5.html": 4,
-    "motif_map_heatmap_top5.html": 5,
-    "motif_map_heatmap_top10.html": 6,
-    "homerResults.html": 7,
-    "knownResults.html": 8,
+    "homerResults.html": 0,
+    "knownResults.html": 1,
+    "motif_map_uniq.html": 2,
+    "motif_map.html": 3,
+    "motif_map_heatmap_uniq_top5.html": 4,
+    "motif_map_all.html": 5,
+    "motif_map_heatmap_all_top5.html": 6,
+    "motif_map_heatmap_top5.html": 7,
+    "motif_map_heatmap_top10.html": 8,
     "geneOntology.html": 9,
 }
 
@@ -82,6 +82,30 @@ def titleize_slug(value: str) -> str:
     tokens = [token for token in re.split(r"[_\s-]+", value) if token]
     labels = [TOKEN_LABELS.get(token.lower(), token) for token in tokens]
     return " ".join(labels)
+
+
+def run_priority(species: str, run: dict) -> tuple[int, str, str]:
+    run_id = run["id"].lower()
+    if species == "chicken":
+        if "ifn1_builtinbg" in run_id:
+            group = 0
+        elif "builtinbg" in run_id:
+            group = 1
+        elif "custombg" in run_id:
+            group = 2
+        else:
+            group = 3
+    elif species == "human":
+        if "builtinbg" in run_id:
+            group = 0
+        elif "custombg" in run_id:
+            group = 1
+        else:
+            group = 2
+    else:
+        group = 0 if "builtinbg" in run_id else 1
+
+    return (group, run["name"], run["id"])
 
 
 def run_tags(run_name: str) -> list[str]:
@@ -291,6 +315,7 @@ def build_species_payload(runs: list[dict], regex_stats: dict[str, list[dict]]) 
     species_payload = []
     for species in sorted(species_names):
         species_runs = [run for run in runs if run["species"] == species]
+        species_runs.sort(key=lambda run: run_priority(species, run))
         species_payload.append(
             {
                 "id": species,
@@ -317,7 +342,7 @@ def build_html(species_payload: list[dict], total_reports: int) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Combined Pipeline Results</title>
+  <title>ISRE Analysis Results</title>
   <style>
     :root {{
       --bg: #f6f7f9;
@@ -565,8 +590,8 @@ def build_html(species_payload: list[dict], total_reports: int) -> str:
 <body>
   <div class="app">
     <aside>
-      <h1>Combined Pipeline Results</h1>
-      <p class="summary"><span id="speciesCount">0</span> species, <span id="reportCount">{total_reports}</span> top-level HTML reports copied into source-named result folders.</p>
+      <h1>ISRE Analysis Results</h1>
+      <p class="summary"><span id="speciesCount">0</span> species, <span id="reportCount">{total_reports}</span> HTML reports.</p>
       <h3>Species</h3>
       <div id="speciesList" class="button-list"></div>
     </aside>
@@ -644,7 +669,7 @@ def build_html(species_payload: list[dict], total_reports: int) -> str:
     function renderRunList(species) {{
       runList.innerHTML = "";
       if (!species || !species.runs.length) {{
-        runList.innerHTML = '<div class="empty">No copied HTML runs found for this species.</div>';
+        runList.innerHTML = '<div class="empty">No HTML runs found for this species.</div>';
         return;
       }}
 
@@ -686,14 +711,14 @@ def build_html(species_payload: list[dict], total_reports: int) -> str:
 
     function renderReports(run) {{
       if (!run) {{
-        return '<div class="empty">Select a species with copied HTML runs to show report links.</div>';
+        return '<div class="empty">Select a species with HTML runs to show report links.</div>';
       }}
       return `
         <div class="run-heading">
           <h2>${{escapeHtml(run.name)}}</h2>
           <span class="metric">${{run.reports.length}} HTML reports</span>
         </div>
-        <p class="source-line">Copied from ${{escapeHtml(run.source_dir)}} to results/${{escapeHtml(run.dest_dir)}}/</p>
+        <p class="source-line">Prepared from ${{escapeHtml(run.source_dir)}}</p>
         <div class="report-grid">
           ${{run.reports.map((report) => `
             <div class="report-link">
@@ -766,7 +791,7 @@ def main() -> None:
 
     print(f"Wrote {RESULTS_DIR / 'index.html'}")
     print(f"Copied {len(runs)} runs into {RESULTS_DIR}")
-    print(f"Linked {total_reports} top-level HTML reports")
+    print(f"Linked {total_reports} HTML reports")
 
 
 if __name__ == "__main__":
