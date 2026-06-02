@@ -1,0 +1,16 @@
+species	result_type	rank	match_name	consensus	target_pct	bg_pct	signal_delta_pct	false_positive	isre_like
+human	de_novo	1	ISRE(IRF)/ThioMac-LPS-Expression(GSE23622)/Homer(0.984)	GGTTTCAGTTTC	19.55	5.01	14.540000000000001	False	True
+human	de_novo	2	NFkB-p50,p52(RHD)/Monocyte-p50-ChIP-Chip(Schreiber_et_al.)/Homer(0.636)	GGGAGTCCCTGC	3.21	0.07	3.14	False	False
+human	de_novo	3	OVOL2/MA1545.2/Jaspar(0.623)	CAACTAGCGG	14.42	4.47	9.95	True	False
+human	de_novo	4	POU6F1/MA1549.2/Jaspar(0.625)	CCTCATTTGTAG	3.53	0.17	3.36	True	False
+human	de_novo	5	Bcl6(Zf)/Liver-Bcl6-ChIP-Seq(GSE31578)/Homer(0.829)	TCCAGGAAAA	28.53	14.4	14.13	True	True
+chicken	de_novo	1	Blimp-1/dmmpmm(Noyes)/fly(0.864)	GAAAGCGAAAGT	28.3	1.26	27.04	False	True
+chicken	de_novo	2	STAT5(Stat)/mCD4+-Stat5-ChIP-Seq(GSE12346)/Homer(0.758)	TATTCTGAGAAT	13.21	0.12	13.090000000000002	True	False
+chicken	de_novo	3	AT2G01818(PLATZ)/col-AT2G01818-DAP-Seq(GSE60143)/Homer(0.702)	TCCAGAGTCCTC	11.32	0.1	11.22	True	False
+chicken	de_novo	4	Pr_0249(RRM)/Phytophthora_ramorum-RNCMPT00249-PBM/HughesRNA(0.668)	TGCACTGCTGGA	20.75	1.43	19.32	True	False
+chicken	de_novo	5	tll/dmmpmm(Bergman)/fly(0.751)	CAGATTAATTTC	11.32	0.15	11.17	True	True
+duck	de_novo	1	IRF7/MA0772.2/Jaspar(0.854)	AAGCGAAAGCGAAA	20.95	0.86	20.09	False	True
+duck	de_novo	2	skn-1/MA0547.2/Jaspar(0.730)	AAATTATGAAAA	11.43	0.31	11.12	True	True
+duck	de_novo	3	Nfatc1/MA0624.3/Jaspar(0.824)	TGCTGGAAACTA	19.05	2.21	16.84	True	True
+duck	de_novo	4	AT2G20110(CPP)/colamp-AT2G20110-DAP-Seq(GSE60143)/Homer(0.792)	GTGTTTAAAT	32.38	8.59	23.790000000000003	True	False
+duck	de_novo	5	AT3G57600(AP2EREBP)/col-AT3G57600-DAP-Seq(GSE60143)/Homer(0.765)	GGGCAGTGGA	13.33	0.82	12.51	True	False
